@@ -1,4 +1,3 @@
-```python
 import logging
 
 from fastapi import FastAPI, Request, status
@@ -105,4 +104,4 @@ app.include_router(llm.router)
 app.include_router(dashboard.router)
 app.include_router(assistant.router)
 app.include_router(reports.router)
-```
+
