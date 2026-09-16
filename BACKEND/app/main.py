@@ -1,3 +1,4 @@
+```python
 import logging
 
 from fastapi import FastAPI, Request, status
@@ -5,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.database.connection import test_connection
+from app.database.connection import engine, test_connection
+from app.database.base import Base
+import app.models
+from sqlalchemy import text
 from app.ml.model_loader import ModelNotLoadedError, load_pipeline
 from app.routers import anomalies, assistant, auth, dashboard, firewall_logs, llm, reports
 from app.services import cleanup_service
@@ -46,9 +50,16 @@ def on_startup():
 
     if db_ok:
         try:
+            with engine.begin() as conn:
+                conn.execute(text("CREATE SCHEMA IF NOT EXISTS network"))
+
+            Base.metadata.create_all(bind=engine)
+
+            logger.info("Database schema and tables initialized successfully.")
+
             cleanup_service.ensure_schema_upgrades()
         except Exception:
-            logger.exception("Schema upgrade check failed (upload_history_id column) — continuing anyway.")
+            logger.exception("Database initialization/schema upgrade failed — continuing anyway.")
 
     try:
         load_pipeline()
@@ -67,6 +78,7 @@ def on_startup():
 
     if db_ok:
         import asyncio
+
         asyncio.create_task(cleanup_service.cleanup_loop())
         logger.info(
             "Retention cleanup scheduled: firewall logs/anomalies older than %dd, "
@@ -93,4 +105,4 @@ app.include_router(llm.router)
 app.include_router(dashboard.router)
 app.include_router(assistant.router)
 app.include_router(reports.router)
-
+```
